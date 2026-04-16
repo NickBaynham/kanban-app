@@ -21,6 +21,17 @@
 - Use popular libraries
 - As simple as possible but with an elegant UI
 
+### Avoiding hydration errors with drag-and-drop (Next.js App Router)
+
+Libraries such as `@dnd-kit` attach accessibility attributes (for example `aria-describedby` with generated ids) that can differ between server-rendered HTML and the first client render. That produces React hydration warnings (“server rendered HTML didn’t match the client”).
+
+To avoid this:
+
+1. **Do not server-render the board subtree** that wraps `DndContext` / sortable items. Load it only in the browser (for example with `next/dynamic` and `{ ssr: false }`).
+2. **Never put `{ ssr: false }` on `next/dynamic` inside a Server Component** (including the default export in `app/page.tsx`). Next.js disallows it there. Use a small wrapper file with `"use client"` that calls `dynamic(..., { ssr: false })` and import that wrapper from the page.
+
+Optional: add a Playwright check that fails if hydration-mismatch messages appear in the console after the board loads.
+
 ## Color Scheme
 
 - Accent Yellow: `#ecad0a` - accent lines, highlights
