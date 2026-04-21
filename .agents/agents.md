@@ -1,7 +1,8 @@
 # Kanban Project
 
 ## Business Requirements
-
+- User can sign in
+- When signed in, user sees a Kanban board for a single project
 - An MVP of a Kanban style Project Management application as a web app  
 - The web app should only have 1 board
 - The board has fixed 5 columns that can be renamed  
@@ -11,15 +12,43 @@
 - No more functionality: no archive, no search/filter. Keep it simple.
 - The priority is a slick, professional, gorgeous UI/UX with very simple features
 - The app should open with dummy data populated for the single board
+- The sidebar has an AI chat feature on the right hand side. The AI should be able to answer questions about the board and the cards. It should use the same color scheme and styling as the rest of the app. 
+- The AI can create, update, move, or delete the cards and columns
+
+## Limitations
+- The user sign in is hardcoded as 'admin' with PASSWORD in .env being the password
+- The AI is hardcoded to use the OpenAI API with the key from .env 'OPENROUTER_API_KEY'
+- Only one kanban board per user
+- Run locally in a docker container
 
 ## Technical Details
 
 - Implemented as a modern NextJS app, client rendered
 - The NextJS app should be created in a subdirectory `frontend`
-- No persistence
+- Python FastAPI backend, includng serving the static NextJS app and the AI chat API
+- Everything packaged into a docker container with docker-compose
+- Use pdm as the package manager for python in the docker container
+- Use OpenRouter for API calls. OPENROUTER_API_KEY from .env is the api key.
+- Use openai/gpt-oss:20b for the AI or comparable
 - No user management for the MVP
-- Use popular libraries
+- Use SQLlite for the local database, creating a new table if it doesn't exist 
+- Database is always in the docker container with the rest of the application
 - As simple as possible but with an elegant UI
+- Make file updated to run the application on docker
+- Make lint, test, e2e tests, and security tests
+- Use latest version of libraries and idiomatic approaches as of today
+- Keep it simple - NEVER over-engineer, ALWAYS simplify, NO unnecessary defensive programming. No extra features - focus on simplicity.
+- Keep README minimal. IMPORTANT: no emojis ever    
+- Provide a login page, but only the hardcoded user admin with password in .env PASSWORD can login
+- Provide a logout button
+- provide .env.example to show how to configure local variables
+
+## Starting Point
+- The application is currently a front-end only demo MVP with dummy data.
+- No docker setup
+- No backend or API or AI chat
+- Make does not support backend or full deployment with docker locally
+- Docs are end-user docs for current front end functionality
 
 ### Avoiding hydration errors with drag-and-drop (Next.js App Router)
 
@@ -52,3 +81,7 @@ Optional: add a Playwright check that fails if hydration-mismatch messages appea
 1. Use latest versions of libraries and idiomatic approaches as of today
 2. Keep it simple - NEVER over-engineer, ALWAYS simplify, NO unnecessary defensive programming. No extra features - focus on simplicity.
 3. Be concise. Keep README minimal. IMPORTANT: no emojis ever
+
+## Working Documentation
+
+All documents for planning and execution for this project will be in the docs/ directory. Please review the docs/plan.md file for the high level plan before proceeding.
