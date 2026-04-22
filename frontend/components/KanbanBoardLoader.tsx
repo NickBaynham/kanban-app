@@ -19,7 +19,7 @@ const KanbanBoard = dynamic(
   },
 );
 
-export function KanbanBoardLoader() {
+export function KanbanBoardLoader({ boardId }: { boardId: number }) {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
@@ -34,5 +34,5 @@ export function KanbanBoardLoader() {
 
   if (!mounted) return null;
 
-  return <KanbanBoard />;
+  return <KanbanBoard boardId={boardId} />;
 }

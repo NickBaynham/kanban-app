@@ -1,6 +1,17 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class UserBase(BaseModel):
+    username: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserOutput(UserBase):
+    id: int
+    class Config:
+        from_attributes = True
+
 class CardBase(BaseModel):
     title: str
     details: Optional[str] = None
@@ -35,9 +46,15 @@ class ColumnOutput(ColumnBase):
     class Config:
         from_attributes = True
 
-class BoardOutput(BaseModel):
-    id: int
+class BoardBase(BaseModel):
     name: str
+
+class BoardCreate(BoardBase):
+    pass
+
+class BoardOutput(BoardBase):
+    id: int
+    user_id: int
     columns: List[ColumnOutput] = []
     class Config:
         from_attributes = True

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { fetchWithAuth } from "@/lib/apiClient";
 
-export default function SidebarChat({ onBoardChange }: { onBoardChange: () => void }) {
+export default function SidebarChat({ boardId, onBoardChange }: { boardId: number, onBoardChange: () => void }) {
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
     { role: "assistant", content: "Hello! How can I help you organize your board?" }
   ]);
@@ -20,7 +20,7 @@ export default function SidebarChat({ onBoardChange }: { onBoardChange: () => vo
     try {
       const res = await fetchWithAuth("/chat", {
         method: "POST",
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify({ message: userMsg, board_id: boardId })
       });
       if (res.ok) {
         const data = await res.json();

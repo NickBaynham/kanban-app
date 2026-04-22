@@ -51,13 +51,13 @@ function mapBoardFromBackend(backendBoard: any): BoardSnapshot {
   return { columns, cardsById, columnCardIds };
 }
 
-export function KanbanBoard() {
+export function KanbanBoard({ boardId }: { boardId: number }) {
   const [board, setBoard] = useState<BoardSnapshot | null>(null);
   const [collapsedLanes, setCollapsedLanes] = useState<Record<string, boolean>>({});
 
   const loadBoard = async () => {
     try {
-      const res = await fetchWithAuth("/board");
+      const res = await fetchWithAuth(`/boards/${boardId}`);
       if (res.ok) {
         const data = await res.json();
         setBoard(mapBoardFromBackend(data));
@@ -224,7 +224,7 @@ export function KanbanBoard() {
         </div>
       </DndContext>
       <div className="w-full lg:w-80 flex-shrink-0">
-         <SidebarChat onBoardChange={loadBoard} />
+         <SidebarChat boardId={boardId} onBoardChange={loadBoard} />
       </div>
     </div>
   );

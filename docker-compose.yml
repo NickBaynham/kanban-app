@@ -3,10 +3,23 @@ services:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - kanban_db:/app/data
+    environment:
+      - DATABASE_URL=postgresql://kanban:kanban@db:5432/kanbandb
+    depends_on:
+      - db
     env_file:
       - .env
 
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=kanban
+      - POSTGRES_PASSWORD=kanban
+      - POSTGRES_DB=kanbandb
+    volumes:
+      - kanban_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
 volumes:
-  kanban_db:
+  kanban_pgdata:

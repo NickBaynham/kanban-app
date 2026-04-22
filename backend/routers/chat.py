@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends
+import auth
 from sqlalchemy.orm import Session
 from database import get_db
 import os
 from openai import OpenAI
 import json
-from .api import get_or_create_board
 from pydantic import BaseModel
 import models
+from fastapi import HTTPException
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ client = OpenAI(
 
 class ChatRequest(BaseModel):
     message: str
+    board_id: int
 
 tools = [
     {
@@ -52,8 +54,10 @@ tools = [
 ]
 
 @router.post("/chat")
-def chat_with_ai(req: ChatRequest, db: Session = Depends(get_db)):
-    board = get_or_create_board(db)
+def chat_with_ai(req: ChatRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    board = db.query(models.Board).filter(models.Board.id == req.board_id, models.Board.user_id == current_user.id).first()
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
     
     board_state = f"Board ID: {board.id}, Name: {board.name}\n"
     for col in board.columns:
