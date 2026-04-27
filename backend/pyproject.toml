@@ -17,17 +17,23 @@ dependencies = [
     "passlib>=1.7.4",
     "bcrypt>=5.0.0",
     "python-jose[cryptography]>=3.5.0",
-]
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "pytest>=8.2.0",
-    "ruff>=0.4.4",
+    "lxml>=6.1.0",
 ]
 
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.pdm]
 distribution = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2.0",
+    "ruff>=0.4.4",
+    "httpx>=0.28.1",
+]

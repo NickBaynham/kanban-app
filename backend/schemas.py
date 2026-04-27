@@ -37,11 +37,13 @@ class ColumnBase(BaseModel):
     order: int
 
 class ColumnUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
+    collapsed: Optional[bool] = None
 
 class ColumnOutput(ColumnBase):
     id: int
     board_id: int
+    collapsed: bool = False
     cards: List[CardOutput] = []
     class Config:
         from_attributes = True
@@ -51,6 +53,9 @@ class BoardBase(BaseModel):
 
 class BoardCreate(BoardBase):
     pass
+
+class BoardUpdate(BaseModel):
+    name: str
 
 class BoardOutput(BoardBase):
     id: int

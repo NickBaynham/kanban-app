@@ -32,8 +32,11 @@ if os.path.exists("static"):
         # Prevent API routes from being intercepted
         if full_path.startswith("api/"):
             return None
-        # Serve exact file if it exists, otherwise return index.html for SPA fallback
+        # Serve exact file if it exists; check dir/index.html; fallback to root.
         file_path = os.path.join("static", full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
+        index_path = os.path.join(file_path.rstrip("/"), "index.html")
+        if os.path.isfile(index_path):
+            return FileResponse(index_path)
         return FileResponse("static/index.html")

@@ -40,6 +40,16 @@ def get_board(board_id: int, db: Session = Depends(get_db), current_user: models
         raise HTTPException(status_code=404, detail="Board not found")
     return board
 
+@router.put("/boards/{board_id}", response_model=schemas.BoardOutput)
+def update_board(board_id: int, board_in: schemas.BoardUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    board = db.query(models.Board).filter(models.Board.id == board_id, models.Board.user_id == current_user.id).first()
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    board.name = board_in.name
+    db.commit()
+    db.refresh(board)
+    return board
+
 @router.delete("/boards/{board_id}")
 def delete_board(board_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     board = db.query(models.Board).filter(models.Board.id == board_id, models.Board.user_id == current_user.id).first()
@@ -54,7 +64,10 @@ def update_column(column_id: int, col_in: schemas.ColumnUpdate, db: Session = De
     column = db.query(models.ColumnModel).filter(models.ColumnModel.id == column_id).first()
     if not column:
         raise HTTPException(status_code=404, detail="Column not found")
-    column.name = col_in.name
+    if col_in.name is not None:
+        column.name = col_in.name
+    if col_in.collapsed is not None:
+        column.collapsed = col_in.collapsed
     db.commit()
     db.refresh(column)
     return column

@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchWithAuth } from "@/lib/apiClient";
 
-const DEFAULT_TITLE = "Project board";
+type Props = {
+  boardId: number;
+  boardName: string;
+};
 
-export function EditableProjectTitle() {
-  const [title, setTitle] = useState(DEFAULT_TITLE);
+export function EditableProjectTitle({ boardId, boardName }: Props) {
+  const [title, setTitle] = useState(boardName);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(title);
+  const [draft, setDraft] = useState(boardName);
 
-  const commit = () => {
+  // Sync when parent reloads the board (e.g. after AI rename)
+  useEffect(() => {
+    if (!editing) {
+      setTitle(boardName);
+      setDraft(boardName);
+    }
+  }, [boardName, editing]);
+
+  const commit = async () => {
     const next = draft.trim() || title;
     setTitle(next);
     setDraft(next);
     setEditing(false);
+    await fetchWithAuth(`/boards/${boardId}`, {
+      method: "PUT",
+      body: JSON.stringify({ name: next }),
+    });
   };
 
   return (

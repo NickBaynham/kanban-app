@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -26,7 +26,8 @@ class ColumnModel(Base):
     name = Column(String, index=True)
     order = Column(Integer)
     board_id = Column(Integer, ForeignKey("boards.id"))
-    
+    collapsed = Column(Boolean, default=False, server_default="false", nullable=False)
+
     board = relationship("Board", back_populates="columns")
     cards = relationship("Card", back_populates="column", cascade="all, delete-orphan", order_by="Card.order")
 

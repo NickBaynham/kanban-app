@@ -25,7 +25,6 @@ import { KanbanColumn } from "./KanbanColumn";
 import { fetchWithAuth } from "@/lib/apiClient";
 import SidebarChat from "./SidebarChat";
 
-// Helper to map backend format to frontend format
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapBoardFromBackend(backendBoard: any): BoardSnapshot {
   const columns: ColumnDef[] = [];
@@ -51,8 +50,20 @@ function mapBoardFromBackend(backendBoard: any): BoardSnapshot {
   return { columns, cardsById, columnCardIds };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractCollapsed(backendBoard: any): Record<string, boolean> {
+  const collapsed: Record<string, boolean> = {};
+  if (!backendBoard?.columns) return collapsed;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  backendBoard.columns.forEach((col: any) => {
+    if (col.collapsed) collapsed[String(col.id)] = true;
+  });
+  return collapsed;
+}
+
 export function KanbanBoard({ boardId }: { boardId: number }) {
   const [board, setBoard] = useState<BoardSnapshot | null>(null);
+  const [boardName, setBoardName] = useState<string>("");
   const [collapsedLanes, setCollapsedLanes] = useState<Record<string, boolean>>({});
 
   const loadBoard = async () => {
@@ -61,6 +72,8 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
       if (res.ok) {
         const data = await res.json();
         setBoard(mapBoardFromBackend(data));
+        setBoardName(data.name);
+        setCollapsedLanes(extractCollapsed(data));
       }
     } catch (e) {
       console.error("Failed to load board", e);
@@ -73,7 +86,12 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
   }, []);
 
   const toggleLane = (columnId: string) => {
-    setCollapsedLanes((prev) => ({ ...prev, [columnId]: !prev[columnId] }));
+    const newCollapsed = !collapsedLanes[columnId];
+    setCollapsedLanes((prev) => ({ ...prev, [columnId]: newCollapsed }));
+    fetchWithAuth(`/columns/${columnId}`, {
+      method: "PUT",
+      body: JSON.stringify({ collapsed: newCollapsed }),
+    }).catch(console.error);
   };
 
   const sensors = useSensors(
@@ -93,10 +111,9 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
     const overColumn = findColumnForCard(board, overId);
     if (!activeColumn || !overColumn) return;
 
-    // Local Optimistic Update
     let newBoard = board;
     let newOrder = 0;
-    
+
     if (activeColumn === overColumn) {
       const items = [...(board.columnCardIds[activeColumn] ?? [])];
       const oldIndex = items.indexOf(activeId);
@@ -133,18 +150,12 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
       newOrder = toIndex;
     }
 
-    // Backend Sync
     try {
       await fetchWithAuth(`/cards/${activeId}`, {
         method: "PUT",
-        body: JSON.stringify({
-          column_id: parseInt(overColumn),
-          order: newOrder
-        })
+        body: JSON.stringify({ column_id: parseInt(overColumn), order: newOrder }),
       });
-      // Optionally reload to ensure sync
-      // await loadBoard();
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     }
   };
@@ -154,7 +165,7 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
     setBoard((b) => localRenameColumn(b!, id, title));
     await fetchWithAuth(`/columns/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ name: title })
+      body: JSON.stringify({ name: title }),
     });
   };
 
@@ -169,24 +180,21 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
     setBoard((b) => localUpdateCard(b!, id, title, details));
     await fetchWithAuth(`/cards/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ title, details })
+      body: JSON.stringify({ title, details }),
     });
   };
 
   const onAddCard = async (colId: string, title: string, details: string) => {
     if (!board) return;
-    // Local optimistic update via temporary ID
-    // We wait for real backend add instead to get the correct numeric ID
     try {
       const res = await fetchWithAuth("/cards", {
         method: "POST",
-        body: JSON.stringify({ title, details, column_id: parseInt(colId), order: 999 })
+        body: JSON.stringify({ title, details, column_id: parseInt(colId), order: 999 }),
       });
       if (res.ok) {
-        // Just reload board for simplicity when adding card
         await loadBoard();
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     }
   };
@@ -197,13 +205,11 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
     <div className="flex flex-col lg:flex-row gap-6 w-full h-full min-h-[70vh]">
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
         <div className="flex-1 flex flex-col min-w-0">
-          <EditableProjectTitle />
+          <EditableProjectTitle boardId={boardId} boardName={boardName} />
           <div className="board-scroll flex gap-5 overflow-x-auto pb-5 flex-1">
             {board.columns.map((column, laneIndex) => {
               const cardIds = board.columnCardIds[column.id] ?? [];
-              const cards = cardIds
-                .map((id) => board.cardsById[id])
-                .filter(Boolean);
+              const cards = cardIds.map((id) => board.cardsById[id]).filter(Boolean);
               return (
                 <KanbanColumn
                   key={column.id}
@@ -224,7 +230,7 @@ export function KanbanBoard({ boardId }: { boardId: number }) {
         </div>
       </DndContext>
       <div className="w-full lg:w-80 flex-shrink-0">
-         <SidebarChat boardId={boardId} onBoardChange={loadBoard} />
+        <SidebarChat boardId={boardId} onBoardChange={loadBoard} />
       </div>
     </div>
   );
