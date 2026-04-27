@@ -62,11 +62,37 @@ describe("KanbanColumn", () => {
     );
 
     const col = screen.getByTestId("column-c1");
-    await user.click(within(col).getByRole("button", { name: "+ Add card" }));
+    await user.click(within(col).getByRole("button", { name: "Add card" }));
     await user.type(within(col).getByRole("textbox", { name: "New card title" }), "Task A");
     await user.type(within(col).getByRole("textbox", { name: "New card details" }), "Do the thing");
     await user.click(within(col).getByRole("button", { name: "Add card" }));
 
     expect(onAddCard).toHaveBeenCalledWith("c1", "Task A", "Do the thing");
+  });
+
+  it("shows the card count badge", () => {
+    render(
+      wrap(
+        <KanbanColumn
+          column={{ id: "c2", title: "Done" }}
+          cardIds={["a", "b", "c"]}
+          cards={[
+            { id: "a", title: "A", details: "" },
+            { id: "b", title: "B", details: "" },
+            { id: "c", title: "C", details: "" },
+          ]}
+          laneIndex={0}
+          collapsed={false}
+          onToggleCollapse={() => {}}
+          onRename={() => {}}
+          onDeleteCard={() => {}}
+          onUpdateCard={() => {}}
+          onAddCard={() => {}}
+        />,
+      ),
+    );
+
+    const col = screen.getByTestId("column-c2");
+    expect(within(col).getByText("3")).toBeInTheDocument();
   });
 });

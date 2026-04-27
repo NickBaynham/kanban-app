@@ -34,8 +34,5 @@ COPY backend/. ./
 # Copy statically exported frontend files to the backend for serving
 COPY --from=frontend-builder /workspace/frontend/out ./static
 
-# Ensure data directory exists for SQLite
-RUN mkdir -p /app/data
-
 # Run uvicorn server
 CMD ["pdm", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,36 +1,55 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import os
+import sys
+
 import bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
-import os
 
 from database import get_db
 import models
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "super-secret-key-for-kanban")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 1 week
+_INSECURE_FALLBACK = "insecure-development-key-change-me"
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+def _resolve_secret_key() -> str:
+    key = os.environ.get("SECRET_KEY")
+    if key:
+        return key
+    # Allow tests and local dev to run without env config, but never in prod.
+    if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("KANBAN_ALLOW_INSECURE_KEY") == "1":
+        return _INSECURE_FALLBACK
+    sys.stderr.write(
+        "FATAL: SECRET_KEY environment variable is not set. Refusing to start with an insecure default.\n"
+        "Generate one with `python -c 'import secrets; print(secrets.token_urlsafe(64))'` and set it via .env.\n"
+    )
+    raise RuntimeError("SECRET_KEY is not set")
+
+
+SECRET_KEY = _resolve_secret_key()
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
+
 
 def verify_password(plain_password, hashed_password):
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
 
 def get_password_hash(password):
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    expires_at = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+    to_encode.update({"exp": expires_at})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -40,12 +59,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     user = db.query(models.User).filter(models.User.username == username).first()
     if user is None:
         raise credentials_exception

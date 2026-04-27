@@ -1,5 +1,6 @@
 import Dashboard from "@/components/Dashboard";
 import { LogoutButton } from "@/components/LogoutButton";
+import { KanbanIcon } from "@/components/Icons";
 
 export default function Home() {
   return (
@@ -9,27 +10,24 @@ export default function Home() {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--color-primary)]/35 to-transparent"
           aria-hidden
         />
-        <div className="mx-auto flex max-w-[100vw] flex-row gap-2 px-6 py-7 lg:px-10 justify-between items-center">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <div
-                className="h-1.5 w-28 rounded-full bg-gradient-to-r from-[var(--color-accent)] via-[var(--color-primary)] to-[var(--color-secondary)] shadow-sm shadow-[var(--color-primary)]/20"
-                aria-hidden
-              />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">
+        <div className="mx-auto flex w-full items-center justify-between gap-3 px-5 py-4 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-white shadow-md shadow-[var(--color-primary)]/25">
+              <KanbanIcon size={20} />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">
                 Kanban
               </span>
+              <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-navy)]">
+                Your boards
+              </h1>
             </div>
-            <p className="max-w-2xl text-base leading-relaxed text-[var(--color-gray)]">
-              Your workspaces and projects.
-            </p>
           </div>
-          <div>
-            <LogoutButton />
-          </div>
+          <LogoutButton />
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-9 lg:px-10">
+      <main className="mx-auto w-full max-w-screen-2xl px-5 py-7 lg:px-8">
         <Dashboard />
       </main>
     </div>

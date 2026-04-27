@@ -49,6 +49,8 @@ test.describe("Kanban board", () => {
         headers: { Authorization: `Bearer ${token}` },
       });
     }
+    // Best-effort cleanup of the e2e user so the dev DB doesn't accumulate.
+    // The /api/users delete endpoint isn't exposed today; revisit if added.
   });
 
   test.beforeEach(async ({ page }) => {
@@ -136,12 +138,12 @@ test.describe("Kanban board", () => {
     // Collapse
     await inProgressCol.getByRole("button", { name: "Collapse lane" }).click();
     await expect(inProgressCol).toHaveAttribute("data-collapsed", "true");
-    await expect(inProgressCol.getByRole("button", { name: "+ Add card" })).not.toBeVisible();
+    await expect(inProgressCol.getByRole("button", { name: "Add card" })).not.toBeVisible();
 
     // Expand
     await inProgressCol.getByRole("button", { name: "Expand lane" }).click();
     await expect(inProgressCol).toHaveAttribute("data-collapsed", "false");
-    await expect(inProgressCol.getByRole("button", { name: "+ Add card" })).toBeVisible();
+    await expect(inProgressCol.getByRole("button", { name: "Add card" })).toBeVisible();
   });
 
   test("collapsed state persists on reload", async ({ page }) => {
@@ -163,7 +165,7 @@ test.describe("Kanban board", () => {
 
   test("adds a card to a column", async ({ page }) => {
     const inProgressCol = col("In Progress", page);
-    await inProgressCol.getByRole("button", { name: "+ Add card" }).click();
+    await inProgressCol.getByRole("button", { name: "Add card" }).click();
     await inProgressCol.getByRole("textbox", { name: "New card title" }).fill("E2E card");
     await inProgressCol.getByRole("textbox", { name: "New card details" }).fill("Created by Playwright");
     await inProgressCol.getByRole("button", { name: "Add card", exact: true }).click();
@@ -172,7 +174,7 @@ test.describe("Kanban board", () => {
 
   test("edits a card", async ({ page }) => {
     const toDoCol = col("To Do", page);
-    await toDoCol.getByRole("button", { name: "+ Add card" }).click();
+    await toDoCol.getByRole("button", { name: "Add card" }).click();
     await toDoCol.getByRole("textbox", { name: "New card title" }).fill("Card to Edit");
     await toDoCol.getByRole("button", { name: "Add card", exact: true }).click();
     await expect(toDoCol.getByText("Card to Edit")).toBeVisible();
@@ -189,7 +191,7 @@ test.describe("Kanban board", () => {
 
   test("deletes a card", async ({ page }) => {
     const toDoCol = col("To Do", page);
-    await toDoCol.getByRole("button", { name: "+ Add card" }).click();
+    await toDoCol.getByRole("button", { name: "Add card" }).click();
     await toDoCol.getByRole("textbox", { name: "New card title" }).fill("Card to Delete");
     await toDoCol.getByRole("button", { name: "Add card", exact: true }).click();
     await expect(toDoCol.getByText("Card to Delete")).toBeVisible();
@@ -200,7 +202,7 @@ test.describe("Kanban board", () => {
 
   test("drags a card to another column", async ({ page }) => {
     const toDoCol = col("To Do", page);
-    await toDoCol.getByRole("button", { name: "+ Add card" }).click();
+    await toDoCol.getByRole("button", { name: "Add card" }).click();
     await toDoCol.getByRole("textbox", { name: "New card title" }).fill("Card to Drag");
     await toDoCol.getByRole("button", { name: "Add card", exact: true }).click();
     await expect(toDoCol.getByText("Card to Drag")).toBeVisible();

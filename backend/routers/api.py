@@ -1,17 +1,19 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from datetime import timedelta
+
 from database import get_db
 import models
 import schemas
-import os
 import auth
 
 router = APIRouter()
 
-from typing import List
 
 def create_default_columns(db: Session, board_id: int):
     columns = ["To Do", "In Progress", "In Review", "Testing", "Done"]
@@ -19,9 +21,30 @@ def create_default_columns(db: Session, board_id: int):
         db.add(models.ColumnModel(name=col_name, order=idx, board_id=board_id))
     db.commit()
 
+
+def _get_user_column(db: Session, column_id: int, user_id: int) -> models.ColumnModel | None:
+    return (
+        db.query(models.ColumnModel)
+        .join(models.Board, models.ColumnModel.board_id == models.Board.id)
+        .filter(models.ColumnModel.id == column_id, models.Board.user_id == user_id)
+        .first()
+    )
+
+
+def _get_user_card(db: Session, card_id: int, user_id: int) -> models.Card | None:
+    return (
+        db.query(models.Card)
+        .join(models.ColumnModel, models.Card.column_id == models.ColumnModel.id)
+        .join(models.Board, models.ColumnModel.board_id == models.Board.id)
+        .filter(models.Card.id == card_id, models.Board.user_id == user_id)
+        .first()
+    )
+
+
 @router.get("/boards", response_model=List[schemas.BoardOutput])
 def get_boards(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     return db.query(models.Board).filter(models.Board.user_id == current_user.id).all()
+
 
 @router.post("/boards", response_model=schemas.BoardOutput)
 def create_board(board_in: schemas.BoardCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -33,12 +56,14 @@ def create_board(board_in: schemas.BoardCreate, db: Session = Depends(get_db), c
     db.refresh(board)
     return board
 
+
 @router.get("/boards/{board_id}", response_model=schemas.BoardOutput)
 def get_board(board_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     board = db.query(models.Board).filter(models.Board.id == board_id, models.Board.user_id == current_user.id).first()
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     return board
+
 
 @router.put("/boards/{board_id}", response_model=schemas.BoardOutput)
 def update_board(board_id: int, board_in: schemas.BoardUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -50,6 +75,7 @@ def update_board(board_id: int, board_in: schemas.BoardUpdate, db: Session = Dep
     db.refresh(board)
     return board
 
+
 @router.delete("/boards/{board_id}")
 def delete_board(board_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     board = db.query(models.Board).filter(models.Board.id == board_id, models.Board.user_id == current_user.id).first()
@@ -59,9 +85,10 @@ def delete_board(board_id: int, db: Session = Depends(get_db), current_user: mod
     db.commit()
     return {"ok": True}
 
+
 @router.put("/columns/{column_id}", response_model=schemas.ColumnOutput)
 def update_column(column_id: int, col_in: schemas.ColumnUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    column = db.query(models.ColumnModel).filter(models.ColumnModel.id == column_id).first()
+    column = _get_user_column(db, column_id, current_user.id)
     if not column:
         raise HTTPException(status_code=404, detail="Column not found")
     if col_in.name is not None:
@@ -72,40 +99,68 @@ def update_column(column_id: int, col_in: schemas.ColumnUpdate, db: Session = De
     db.refresh(column)
     return column
 
+
 @router.post("/cards", response_model=schemas.CardOutput)
 def create_card(card_in: schemas.CardCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    card = models.Card(**card_in.model_dump())
+    column = _get_user_column(db, card_in.column_id, current_user.id)
+    if not column:
+        raise HTTPException(status_code=404, detail="Column not found")
+
+    max_order = (
+        db.query(func.max(models.Card.order))
+        .filter(models.Card.column_id == card_in.column_id)
+        .scalar()
+    )
+    next_order = card_in.order if card_in.order is not None else (max_order + 1 if max_order is not None else 0)
+
+    card = models.Card(
+        title=card_in.title,
+        details=card_in.details,
+        column_id=card_in.column_id,
+        order=next_order,
+    )
     db.add(card)
     db.commit()
     db.refresh(card)
     return card
 
+
 @router.put("/cards/{card_id}", response_model=schemas.CardOutput)
 def update_card(card_id: int, card_in: schemas.CardUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    card = db.query(models.Card).filter(models.Card.id == card_id).first()
+    card = _get_user_card(db, card_id, current_user.id)
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
+
     update_data = card_in.model_dump(exclude_unset=True)
+
+    if "column_id" in update_data and update_data["column_id"] is not None:
+        target_col = _get_user_column(db, update_data["column_id"], current_user.id)
+        if not target_col:
+            raise HTTPException(status_code=404, detail="Target column not found")
+
     for key, value in update_data.items():
         setattr(card, key, value)
     db.commit()
     db.refresh(card)
     return card
 
+
 @router.delete("/cards/{card_id}")
 def delete_card(card_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    card = db.query(models.Card).filter(models.Card.id == card_id).first()
+    card = _get_user_card(db, card_id, current_user.id)
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
     db.delete(card)
     db.commit()
     return {"ok": True}
+
+
 @router.post("/register", response_model=schemas.UserOutput)
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user_in.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
-    
+
     hashed_password = auth.get_password_hash(user_in.password)
     db_user = models.User(username=user_in.username, hashed_password=hashed_password)
     db.add(db_user)
@@ -113,9 +168,11 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
+
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
